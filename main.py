@@ -69,7 +69,7 @@ def ping_opsgenie_heartbeat():
 def main():
     global logger, OPSGENIE_API_KEY, CLUSTER_NAME
     
-    load_dotenv()  # Load environment variables from .env file
+    load_dotenv()  
     logger = setup_logger()
     env_vars = get_env_vars()
     OPSGENIE_API_KEY = env_vars['OPSGENIE_API_KEY']
@@ -84,7 +84,7 @@ def main():
         try:
             while True:
                 ping_opsgenie_heartbeat()
-                time.sleep(PING_SLEEP)  # Sleep for 5 minutes #make an env 
+                time.sleep(PING_SLEEP) 
         except KeyboardInterrupt:
             logger.info("Opsgenie pinger stopped by keyboard.")
 
