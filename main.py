@@ -1,7 +1,6 @@
 import requests
 import time
 import logging
-from dotenv import load_dotenv
 from json_log_formatter import JsonFormatter
 import json
 import os
@@ -68,8 +67,7 @@ def ping_opsgenie_heartbeat():
 
 def main():
     global logger, OPSGENIE_API_KEY, CLUSTER_NAME
-    
-    load_dotenv()  
+     
     logger = setup_logger()
     env_vars = get_env_vars()
     OPSGENIE_API_KEY = env_vars['OPSGENIE_API_KEY']
@@ -90,3 +88,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

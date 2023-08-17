@@ -14,3 +14,4 @@ class JsonFormatter(logging.Formatter):
             log_entry['exception'] = self.formatException(record.exc_info)
 
         return json.dumps(log_entry)
+        
