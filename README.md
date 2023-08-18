@@ -14,6 +14,6 @@ PING_SLEEP=<some-value>
 ```
 
 - Runing the script
-```python
+```bash
 $ docker run --env-file .env ghcr.io/glueops/cluster-monitoring:main
 ```
