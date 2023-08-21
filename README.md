@@ -9,8 +9,8 @@ The script is deployed into the ArgoCD cluster under monitoring. Once this clust
 - Create a ```.env``` file, with the following contents
 ```bash
 OPSGENIE_API_KEY=<some-value>
-HEARTBEAT_NAME=<some-value>
-PING_SLEEP=<some-value>
+CLUSTER_NAME=<some-value>
+PING_SLEEP_MINUTES=<some-value-in-minutes>
 ```
 
 - Runing the script

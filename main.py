@@ -21,7 +21,7 @@ def get_env_vars():
     env_vars = {
         'OPSGENIE_API_KEY': os.getenv('OPSGENIE_API_KEY'),
         'CLUSTER_NAME': os.getenv('CLUSTER_NAME'),
-        'PING_SLEEP': int(os.getenv('PING_SLEEP'))
+        'PING_SLEEP_MINUTES': int(os.getenv('PING_SLEEP_MINUTES'))
     }
     missing_vars = [var for var, value in env_vars.items() if not value]
 
@@ -72,7 +72,7 @@ def main():
     env_vars = get_env_vars()
     OPSGENIE_API_KEY = env_vars['OPSGENIE_API_KEY']
     CLUSTER_NAME = env_vars['CLUSTER_NAME']
-    PING_SLEEP= env_vars['PING_SLEEP']
+    PING_SLEEP_MINUTES= env_vars['PING_SLEEP_MINUTES']
 
     if not does_heartbeat_exist(CLUSTER_NAME, OPSGENIE_API_KEY):
         logger.error(f"Heartbeat {CLUSTER_NAME} does not exist in Opsgenie.")
@@ -82,7 +82,7 @@ def main():
         try:
             while True:
                 ping_opsgenie_heartbeat()
-                time.sleep(PING_SLEEP) 
+                time.sleep(PING_SLEEP_MINUTES) 
         except KeyboardInterrupt:
             logger.info("Opsgenie pinger stopped by keyboard.")
 
