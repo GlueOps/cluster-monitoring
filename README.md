@@ -10,7 +10,7 @@ The script is deployed into the ArgoCD cluster under monitoring. Once this clust
 ```bash
 OPSGENIE_API_KEY=<some-value>
 CLUSTER_NAME=<some-value>
-PING_SLEEP_MINUTES=<some-value-in-minutes>
+PING_SLEEP_SECONDS=<some-value-in-minutes>
 ```
 
 - Runing the script
