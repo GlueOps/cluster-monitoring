@@ -4,6 +4,9 @@ import logging
 from json_log_formatter import JsonFormatter
 import json
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def setup_logger():
     logger = logging.getLogger('OpsgeniePing')
@@ -32,25 +35,6 @@ def get_env_vars():
 
     return env_vars
 
-def does_heartbeat_exist(CLUSTER_NAME, OPSGENIE_API_KEY):
-    name = CLUSTER_NAME
-    OPSGENIE_LIST_HEARTBEATS_URL = "https://api.opsgenie.com/v2/heartbeats"
-    headers = {
-        "Authorization": f"GenieKey {OPSGENIE_API_KEY}"
-    }
-
-    try:
-        response = requests.get(OPSGENIE_LIST_HEARTBEATS_URL, headers=headers)
-        response.raise_for_status()
-        heartbeats_data = response.json().get('data', {}).get('heartbeats', [])
-        for heartbeat in heartbeats_data:
-            if heartbeat.get('name') == CLUSTER_NAME:
-                return True
-        return False
-    except requests.RequestException as e:
-        logger.error(f"Failed to retrieve list of heartbeats from Opsgenie. Error: {e}")
-        return False
-
 def ping_opsgenie_heartbeat():
     OPSGENIE_HEARTBEAT_URL = f"https://api.opsgenie.com/v2/heartbeats/{CLUSTER_NAME}/ping"
     headers = {
@@ -74,16 +58,11 @@ def main():
     CLUSTER_NAME = env_vars['CLUSTER_NAME']
     PING_SLEEP_SECONDS= env_vars['PING_SLEEP_SECONDS']
 
-    if not does_heartbeat_exist(CLUSTER_NAME, OPSGENIE_API_KEY):
-        logger.error(f"Heartbeat {CLUSTER_NAME} does not exist in Opsgenie.")
-    else:
-        logger.info(f"Heartbeat {CLUSTER_NAME} exist in Opsgenie.")
-
-        try:
-            while True:
-                ping_opsgenie_heartbeat()
-                time.sleep(PING_SLEEP_SECONDS) 
-        except KeyboardInterrupt:
+    try:
+        while True:
+            ping_opsgenie_heartbeat()
+            time.sleep(PING_SLEEP_SECONDS) 
+    except KeyboardInterrupt:
             logger.info("Opsgenie pinger stopped by keyboard.")
 
 if __name__ == "__main__":
