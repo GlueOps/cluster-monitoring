@@ -118,6 +118,5 @@ if __name__ == '__main__':
         else:
             # Reset the count and sleep for the full interval before checking again
             execution_count = 0
-            time.sleep(interval_in_seconds - 2 * frequency)
         time.sleep(frequency)
         
