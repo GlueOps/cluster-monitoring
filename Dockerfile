@@ -1,14 +1,29 @@
-# Use an official Python runtime as the parent image
-FROM python:3.11.4-bullseye
+# --- Stage 1: Testing ---
+# Use the same base image for consistency
+FROM python:3.11.6-alpine3.18 as tester
 
-# Set the working directory in the container to /app
+# Set working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Install dependencies
+COPY requirements.txt /app/
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy your application code and test files
+COPY monitoring_script.py /app/
+COPY test_monitoring_script.py /app/
 
-# Run main.py when the container launches
-CMD ["python", "-u", "main.py"]
+# Run tests
+RUN python test_monitoring_script.py  # Adjust the command if necessary
+
+# --- Stage 2: Final Image ---
+FROM python:3.11.6-alpine3.18 as final
+
+WORKDIR /app
+COPY --from=tester /app/requirements.txt /app/
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Copy only the necessary files from the tester stage
+COPY --from=tester /app/monitoring_script.py /app/
+
+CMD [ "python", "-u", "monitoring_script.py" ]
