@@ -7,14 +7,14 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt /app/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt && pip install pytest
 
 # Copy your application code and test files
 COPY monitoring_script.py /app/
 COPY test_monitoring_script.py /app/
 
 # Run tests
-RUN python test_monitoring_script.py  # Adjust the command if necessary
+RUN python -u -m pytest -v test_monitoring_script.py
 
 # --- Stage 2: Final Image ---
 FROM python:3.11.6-alpine3.18 as final

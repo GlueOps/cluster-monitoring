@@ -1,6 +1,7 @@
 import os
 import requests
 from glueops.setup_logging import configure as go_configure_logging
+import time
 
 #=== configure logging
 logger = go_configure_logging(
@@ -10,6 +11,7 @@ logger = go_configure_logging(
 
 OPSGENIE_API_KEY = os.getenv('OPSGENIE_API_KEY')
 OPSGENIE_HEARTBEAT_NAME = os.getenv('OPSGENIE_HEARTBEAT_NAME')
+OPSGENIE_PING_INTERVAL_MINUTES = os.getenv('OPSGENIE_PING_INTERVAL_MINUTES',2)
 
 CLUSTER_DEFAULT_DOMAIN_NAME = os.getenv(
     'CLUSTER_DEFAULT_DOMAIN_NAME',
@@ -105,11 +107,15 @@ def send_opsgenie_heartbeat(heartbeat_name):
         logger.info("Pinged Opsgenie heartbeat successfully!")
 
     except requests.RequestException as e:
-        logger.exception(f"Failed to ping Opsgenie heartbeat. Error: {e}")
+        logger.exception(f"Failed to send Opsgenie heartbeat. Error: {e}")
         raise
-
+    
 if __name__ == '__main__':
+    interval_in_seconds = OPSGENIE_PING_INTERVAL_MINUTES * 60
+    frequency = max(interval_in_seconds / 2, 1)
+    
     while True:
+        time.sleep(frequency)
         if is_cluster_healthy():
             logger.info("Checks: STARTED")
             send_opsgenie_heartbeat(OPSGENIE_HEARTBEAT_NAME)
