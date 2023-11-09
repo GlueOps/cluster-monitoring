@@ -112,8 +112,8 @@ if __name__ == '__main__':
                 logger.info("Checks: PASSED")
             else:
                 logger.error(f"One or more health checks failed. Heartbeat for {config.OPSGENIE_HEARTBEAT_NAME} was not sent")   
-                logger.info("Waiting 5mins before checking again")
-                time.sleep(60*5) 
+                logger.info(f"Waiting {interval_in_seconds+120} seconds before checking again")
+                time.sleep(interval_in_seconds+120) 
             execution_count += 1
         else:
             # Reset the count and sleep for the full interval before checking again
