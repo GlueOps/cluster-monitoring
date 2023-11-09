@@ -2,43 +2,22 @@ import os
 import requests
 from glueops.setup_logging import configure as go_configure_logging
 import time
+from serviceconfig import ServiceConfig
 
 #=== configure logging
 logger = go_configure_logging(
     name='GLUEOPS_CLUSTER_MONITORING',
     level=os.getenv('PYTHON_LOG_LEVEL', 'INFO')
 )
+      
 
-OPSGENIE_API_KEY = os.getenv('OPSGENIE_API_KEY')
-OPSGENIE_HEARTBEAT_NAME = os.getenv('OPSGENIE_HEARTBEAT_NAME')
-OPSGENIE_PING_INTERVAL_MINUTES = os.getenv('OPSGENIE_PING_INTERVAL_MINUTES',2)
-
-CLUSTER_DEFAULT_DOMAIN_NAME = os.getenv(
-    'CLUSTER_DEFAULT_DOMAIN_NAME',
-    'cluster.local'
-)
-KUBE_PROMETHEUS_STACK_NAMESPACE = os.getenv(
-    'KUBE_PROMETHEUS_STACK_NAMESPACE',
-    'glueops-core-kube-prometheus-stack'
-)
-
-GLUEOPS_CORE_NAMESPACE = os.getenv(
-    'GLUEOPS_CORE_NAMESPACE',
-    'glueops-core'
-)
-
-PROMETHEUS_URL_HEALTH = f"kps-prometheus.{KUBE_PROMETHEUS_STACK_NAMESPACE}.svc.{CLUSTER_DEFAULT_DOMAIN_NAME}:9090/-/healthy"
-PROMETHEUS_URL_READY = f"kps-prometheus.{KUBE_PROMETHEUS_STACK_NAMESPACE}.svc.{CLUSTER_DEFAULT_DOMAIN_NAME}:9090/-/ready"
-ALERTMANAGER_URL_HEALTH = f"kps-alertmanager.{KUBE_PROMETHEUS_STACK_NAMESPACE}.svc.{CLUSTER_DEFAULT_DOMAIN_NAME}:9093/-/healthy"
-ALERTMANAGER_URL_READY = f"kps-alertmanager.{KUBE_PROMETHEUS_STACK_NAMESPACE}.svc.{CLUSTER_DEFAULT_DOMAIN_NAME}:9093/-/ready"                
-
-def is_cluster_healthy():
+def is_cluster_healthy(config):
     return (
-        get_alertmanager_notifification_health_for_opsgenie() and
-        check_for_200_response(PROMETHEUS_URL_HEALTH) and
-        check_for_200_response(PROMETHEUS_URL_READY) and
-        check_for_200_response(ALERTMANAGER_URL_HEALTH) and
-        check_for_200_response(ALERTMANAGER_URL_READY)
+        get_alertmanager_notifification_health_for_opsgenie(config.PROMETHEUS_QUERY_URL) and
+        check_for_200_response(config.PROMETHEUS_URL_HEALTH) and
+        check_for_200_response(config.PROMETHEUS_URL_READY) and
+        check_for_200_response(config.ALERTMANAGER_URL_HEALTH) and
+        check_for_200_response(config.ALERTMANAGER_URL_READY)
     )
 
 def check_for_200_response(url):
@@ -56,11 +35,9 @@ def check_for_200_response(url):
         raise
 
 
-def get_alertmanager_notifification_health_for_opsgenie():
+def get_alertmanager_notifification_health_for_opsgenie(prometheus_query_url):
     # Prometheus query
     query = 'sum(increase(alertmanager_notifications_failed_total{integration="opsgenie"}[10m]))'
-    # URL for the Prometheus HTTP API
-    url = 'http://'+ KUBE_PROMETHEUS_STACK_NAMESPACE + ':9090/api/v1/query'
 
     # Parameters for the request
     params = {
@@ -69,7 +46,7 @@ def get_alertmanager_notifification_health_for_opsgenie():
 
     try:
         # Send the request to Prometheus
-        response = requests.get(url, params=params)
+        response = requests.get(prometheus_query_url, params=params)
         response.raise_for_status()
 
         # Parse the JSON response
@@ -95,30 +72,52 @@ def get_alertmanager_notifification_health_for_opsgenie():
         logger.exception(f"Error querying Prometheus: {e}")
         raise
     
-def send_opsgenie_heartbeat(heartbeat_name):
-    heart_eat_url = f"https://api.opsgenie.com/v2/heartbeats/{heartbeat_name}/ping"
+def send_opsgenie_heartbeat(config):
+    url = f"https://api.opsgenie.com/v2/heartbeats/{config.OPSGENIE_HEARTBEAT_NAME}/ping"
     headers = {
-        "Authorization": f"GenieKey {OPSGENIE_API_KEY}"
+        "Authorization": f"GenieKey {config.OPSGENIE_API_KEY}"
     }
 
     try:
-        response = requests.get(heart_eat_url, headers=headers)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
-        logger.info("Pinged Opsgenie heartbeat successfully!")
+        logger.debug("Pinged Opsgenie heartbeat successfully!")
 
     except requests.RequestException as e:
         logger.exception(f"Failed to send Opsgenie heartbeat. Error: {e}")
         raise
     
 if __name__ == '__main__':
-    interval_in_seconds = OPSGENIE_PING_INTERVAL_MINUTES * 60
-    frequency = max(interval_in_seconds / 2, 1)
+    config = ServiceConfig()   
+    interval_in_seconds = config.OPSGENIE_PING_INTERVAL_MINUTES * 60
+
+    # Check if the interval is less than 1 minute
+    if interval_in_seconds < 60:
+        try:
+            raise ValueError("OPSGENIE_PING_INTERVAL_MINUTES must be 1 minute or greater.")
+        except Exception as e:
+            logger.exception(str(e))
+            raise
     
+
+    # The frequency is half the interval but not less than 1 minute
+    frequency = max(interval_in_seconds / 2, 60)
+    execution_count = 0
+
     while True:
-        time.sleep(frequency)
-        if is_cluster_healthy():
-            logger.info("Checks: STARTED")
-            #send_opsgenie_heartbeat(OPSGENIE_HEARTBEAT_NAME)
-            logger.info("Checks: PASSED")
+        if execution_count < 2:
+            if is_cluster_healthy(config):
+                logger.info("Checks: STARTED")
+                #send_opsgenie_heartbeat(config.OPSGENIE_HEARTBEAT_NAME)
+                logger.info("Checks: PASSED")
+            else:
+                logger.error(f"One or more health checks failed. Heartbeat for {config.OPSGENIE_HEARTBEAT_NAME} was not sent")   
+                logger.info("Waiting 5mins before checking again")
+                time.sleep(60*5) 
+            execution_count += 1
         else:
-            logger.error(f"One or more health checks failed. Heartbeat for {OPSGENIE_HEARTBEAT_NAME} was not sent")    
+            # Reset the count and sleep for the full interval before checking again
+            execution_count = 0
+            time.sleep(interval_in_seconds - 2 * frequency)
+        time.sleep(frequency)
+        
