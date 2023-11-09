@@ -118,7 +118,7 @@ if __name__ == '__main__':
         time.sleep(frequency)
         if is_cluster_healthy():
             logger.info("Checks: STARTED")
-            send_opsgenie_heartbeat(OPSGENIE_HEARTBEAT_NAME)
+            #send_opsgenie_heartbeat(OPSGENIE_HEARTBEAT_NAME)
             logger.info("Checks: PASSED")
         else:
             logger.error(f"One or more health checks failed. Heartbeat for {OPSGENIE_HEARTBEAT_NAME} was not sent")    
