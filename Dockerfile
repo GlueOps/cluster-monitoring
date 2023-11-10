@@ -1,14 +1,10 @@
-# Use an official Python runtime as the parent image
-FROM python:3.11.4-bullseye
+FROM python:3.11.6-alpine3.18 as final
 
-# Set the working directory in the container to /app
 WORKDIR /app
+COPY requirements.txt /app/
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+COPY monitoring_script.py /app/
+COPY serviceconfig.py /app/
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Run main.py when the container launches
-CMD ["python", "-u", "main.py"]
+CMD [ "python", "-u", "monitoring_script.py" ]
