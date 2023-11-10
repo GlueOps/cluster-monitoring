@@ -108,7 +108,7 @@ if __name__ == '__main__':
         if execution_count < 2:
             if is_cluster_healthy(config):
                 logger.info("Checks: STARTED")
-                #send_opsgenie_heartbeat(config.OPSGENIE_HEARTBEAT_NAME)
+                send_opsgenie_heartbeat(config.OPSGENIE_HEARTBEAT_NAME)
                 logger.info("Checks: PASSED")
             else:
                 logger.error(f"One or more health checks failed. Heartbeat for {config.OPSGENIE_HEARTBEAT_NAME} was not sent")   
