@@ -1,4 +1,4 @@
-FROM python:3.11.11-alpine@sha256:9af3561825050da182afc74b106388af570b99c500a69c8216263aa245a2001b
+FROM python:3.12.9-alpine@sha256:203f7ed10d733d22188aa76391690f2142cef83094490cc37384cedacdcd652d
 
 WORKDIR /app
 COPY requirements.txt /app/
