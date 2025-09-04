@@ -35,43 +35,6 @@ def check_for_200_response(url):
         raise
 
 
-def get_alertmanager_notifification_health_for_opsgenie(prometheus_query_url):
-    # Prometheus query
-    query = 'sum(increase(alertmanager_notifications_failed_total{integration="opsgenie"}[10m]))'
-
-    # Parameters for the request
-    params = {
-        'query': query
-    }
-
-    try:
-        # Send the request to Prometheus
-        response = requests.get(prometheus_query_url, params=params)
-        response.raise_for_status()
-
-        # Parse the JSON response
-        result = response.json()
-
-        # Check the status of the response
-        if result['status'] == 'success':
-            # Extract the result
-            data = result.get('data', {})
-            result_type = data.get('resultType', '')
-
-            # Check if there are any results
-            if result_type == 'vector' and data.get('result', []):
-                # Get the value of the result
-                value = float(data['result'][0]['value'][1])
-
-                # Return True if the value is 0, False otherwise
-                return value == 0
-
-        return False
-
-    except requests.RequestException as e:
-        logger.exception(f"Error querying Prometheus: {e}")
-        raise
-    
 
 def get_alertmanager_notifification_health_for_rootly(prometheus_query_url):
     # Prometheus query
@@ -110,19 +73,6 @@ def get_alertmanager_notifification_health_for_rootly(prometheus_query_url):
         logger.exception(f"Error querying Prometheus: {e}")
         raise
 
-def send_opsgenie_heartbeat(config):
-    url = f"https://api.opsgenie.com/v2/heartbeats/{config.HEARTBEAT_NAME}/ping"
-    headers = {
-        "Authorization": f"GenieKey {config.HEARTBEAT_API_KEY}"
-    }
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        logger.debug("Pinged Opsgenie heartbeat successfully!")
-
-    except requests.RequestException as e:
-        logger.exception(f"Failed to send Opsgenie heartbeat. Error: {e}")
-        raise
 
 def send_rootly_heartbeat(config):
     url = 'https://api.rootly.com/v1/heartbeats/ping'
