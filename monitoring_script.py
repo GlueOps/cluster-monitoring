@@ -124,13 +124,13 @@ def send_opsgenie_heartbeat(config):
         logger.exception(f"Failed to send Opsgenie heartbeat. Error: {e}")
         raise
 
-def send_rootly_heartbeat():
+def send_rootly_heartbeat(config):
     url = 'https://api.rootly.com/v1/heartbeats/ping'
     headers = {
         "Authorization": f"Bearer {config.HEARTBEAT_API_KEY}"
     }
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.post(url, headers=headers)
         response.raise_for_status()
         logger.debug("Pinged Rootly heartbeat successfully!")
 
