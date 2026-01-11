@@ -10,9 +10,9 @@ class ServiceConfig:
             self._setup_local_config()
 
         # New environment variable settings
-        self.OPSGENIE_API_KEY = os.getenv('OPSGENIE_API_KEY')
-        self.OPSGENIE_HEARTBEAT_NAME = os.getenv('OPSGENIE_HEARTBEAT_NAME')
-        self.OPSGENIE_PING_INTERVAL_MINUTES = int(os.getenv('OPSGENIE_PING_INTERVAL_MINUTES', 3))
+        self.HEARTBEAT_API_KEY = os.getenv('HEARTBEAT_API_KEY')
+        self.HEARTBEAT_NAME = os.getenv('HEARTBEAT_NAME')
+        self.PING_INTERVAL_MINUTES = int(os.getenv('PING_INTERVAL_MINUTES', 3))
 
 
     def _setup_kubernetes_config(self):

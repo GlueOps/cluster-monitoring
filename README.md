@@ -6,9 +6,9 @@ This application is designed for monitoring a Kubernetes cluster with the Promet
 
 Before running the application, make sure to configure the following environment variables:
 
-- `OPSGENIE_API_KEY`: Your Opsgenie API key for sending heartbeat notifications.
-- `OPSGENIE_HEARTBEAT_NAME`: The name of the Opsgenie heartbeat to ping.
-- `OPSGENIE_PING_INTERVAL_MINUTES`: The interval (in minutes) between pinging the Opsgenie heartbeat (default: 2 minutes).
+- `HEARTBEAT_API_KEY`: Your Opsgenie API key for sending heartbeat notifications.
+- `HEARTBEAT_NAME`: The name of the Opsgenie heartbeat to ping.
+- `PING_INTERVAL_MINUTES`: The interval (in minutes) between pinging the Opsgenie heartbeat (default: 2 minutes).
 
 ## Running in a Kubernetes Cluster
 
