@@ -2,13 +2,15 @@
 
 This application is designed for monitoring a Kubernetes cluster with the Prometheus and Alertmanager components from the Kubernetes Prometheus Stack (KPS).
 
+It pings an incident.io heartbeat URL on a regular interval *only when* the cluster's Prometheus + Alertmanager are healthy and there have been no failed Alertmanager webhook notifications in the last 10 minutes. If any of those checks fail, the heartbeat is not sent, which causes the cluster's incident.io heartbeat alert to fire.
+
 ## Configuration
 
 Before running the application, make sure to configure the following environment variables:
 
-- `OPSGENIE_API_KEY`: Your Opsgenie API key for sending heartbeat notifications.
-- `OPSGENIE_HEARTBEAT_NAME`: The name of the Opsgenie heartbeat to ping.
-- `OPSGENIE_PING_INTERVAL_MINUTES`: The interval (in minutes) between pinging the Opsgenie heartbeat (default: 2 minutes).
+- `INCIDENT_IO_HEARTBEAT_URL`: Full authenticated URL for the cluster's incident.io heartbeat source. Includes the `?token=...` query parameter; no Authorization header is needed. Copy it from the incident.io web UI under **Alerts → Alert sources → Heartbeat · `<captain_domain>`**.
+- `INCIDENT_IO_PING_INTERVAL_MINUTES`: The interval (in minutes) between pinging the incident.io heartbeat (default: 3 minutes; minimum: 1 minute).
+- `PYTHON_LOG_LEVEL`: Optional log level. Defaults to `INFO`.
 
 ## Running in a Kubernetes Cluster
 
@@ -26,7 +28,8 @@ To run this application locally for debugging purposes and access Prometheus and
 2. Identify the Prometheus and Alertmanager pods in your cluster:
 
    ```bash
-# For Prometheus
-kubectl port-forward svc/kps-prometheus 9090:9090 -n glueops-core-kube-prometheus-stack
-# For Alertmanager
-kubectl port-forward svc/kps-alertmanager 9093:9093 -n glueops-core-kube-prometheus-stack
+   # For Prometheus
+   kubectl port-forward svc/kps-prometheus 9090:9090 -n glueops-core-kube-prometheus-stack
+   # For Alertmanager
+   kubectl port-forward svc/kps-alertmanager 9093:9093 -n glueops-core-kube-prometheus-stack
+   ```
