@@ -155,8 +155,8 @@ if __name__ == '__main__':
                 send_incident_io_heartbeat(config)
             else:
                 logger.error(f"{failed_count} of {total_count} checks failed — skipping heartbeat ping")
-                logger.info(f"Sleeping {interval_in_seconds + 120}s before next attempt")
-                time.sleep(interval_in_seconds + 120)
+                logger.info(f"Sleeping {interval_in_seconds}s before next attempt")
+                time.sleep(interval_in_seconds)
 
             execution_count += 1
         else:
