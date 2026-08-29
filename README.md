@@ -9,7 +9,10 @@ It pings an incident.io heartbeat URL on a regular interval *only when* the clus
 Before running the application, make sure to configure the following environment variables:
 
 - `INCIDENT_IO_HEARTBEAT_URL`: Full authenticated URL for the cluster's incident.io heartbeat source. Includes the `?token=...` query parameter; no Authorization header is needed. Copy it from the incident.io web UI under **Alerts → Alert sources → Heartbeat · `<captain_domain>`**.
-- `INCIDENT_IO_PING_INTERVAL_MINUTES`: The interval (in minutes) between pinging the incident.io heartbeat (default: 3 minutes; minimum: 1 minute).
+- `INCIDENT_IO_PING_INTERVAL_MINUTES`: Scales how often the health checks run and the heartbeat is
+  pinged (default: 3 minutes; minimum: 1 minute). The actual ping cadence is **half** this value
+  (floored at 1 minute), and this value is also the back-off applied after a failed health check.
+  A failed heartbeat ping is retried in place — it does not wait for the next cycle.
 - `PYTHON_LOG_LEVEL`: Optional log level. Defaults to `INFO`.
 
 ## Running in a Kubernetes Cluster
