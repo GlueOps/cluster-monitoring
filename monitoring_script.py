@@ -16,6 +16,11 @@ logger = go_configure_logging(
 # downstream service stops responding cleanly.
 HTTP_TIMEOUT = 10
 
+# Ceiling on how long to keep retrying a failed heartbeat ping. The effective
+# budget is derived from `frequency` at startup (see __main__) so that a fully
+# exhausted retry can never overrun its own tick.
+HEARTBEAT_RETRY_BUDGET_SECONDS = 90
+
 # Shared session: keep-alive + connection pooling across the 6 calls per cycle,
 # and a single User-Agent string so downstream logs (Prometheus/Alertmanager/
 # incident.io) attribute requests to this app.
@@ -28,7 +33,7 @@ def mask_token(url: str | None) -> str | None:
     credential never appears in logs."""
     if not url:
         return url
-    return re.sub(r'(\?|&)(token=)[^&]*', r'\1\2***', url)
+    return re.sub(r'(\?|&)(token=)[^&\s]*', r'\1\2***', url)
 
 
 def check_url_responds_200(url: str, label: str) -> bool:
@@ -42,7 +47,7 @@ def check_url_responds_200(url: str, label: str) -> bool:
         logger.warning(f"  [FAIL] {label} — HTTP {response.status_code} from {url}")
         return False
     except requests.RequestException as e:
-        logger.warning(f"  [FAIL] {label} — {type(e).__name__}: {e} ({url})")
+        logger.warning(f"  [FAIL] {label} — {type(e).__name__}: {mask_token(str(e))} ({url})")
         return False
 
 
@@ -64,7 +69,7 @@ def check_alertmanager_webhook_notifications(prometheus_query_url: str) -> bool:
         response = session.get(prometheus_query_url, params={'query': query}, timeout=HTTP_TIMEOUT)
         response.raise_for_status()
     except requests.RequestException as e:
-        logger.warning(f"  [FAIL] alertmanager webhook notifications — {type(e).__name__}: {e}")
+        logger.warning(f"  [FAIL] alertmanager webhook notifications — {type(e).__name__}: {mask_token(str(e))}")
         return False
 
     result = response.json()
@@ -102,22 +107,61 @@ def run_all_health_checks(config: ServiceConfig) -> tuple[bool, int, int]:
     return failed == 0, failed, len(results)
 
 
-def send_incident_io_heartbeat(config: ServiceConfig) -> bool:
-    """Ping incident.io's heartbeat URL. Auth is in the URL itself (`?token=...`),
-    so a plain GET is enough.
+def send_incident_io_heartbeat(config: ServiceConfig, budget: float, backoff: int = 2) -> bool:
+    """Ping incident.io's heartbeat URL, retrying transient failures in place.
 
-    Logs + returns False on transient failure rather than raising — the daemon stays
-    up and a real ping outage will be surfaced by incident.io's own heartbeat-late
-    alert (which is the right place for that signal)."""
+    Auth is in the URL itself (`?token=...`), so a plain GET is enough, and GET is
+    idempotent — safe to retry a read timeout. Retrying in place matters because the
+    next cycle is a full tick away; losing a whole tick to one blip is what used to
+    push us past incident.io's heartbeat deadline.
+
+    4xx responses (bad or rotated token, wrong URL) are permanent and are NOT retried —
+    retrying them would burn the entire budget every cycle, forever. Transient failures
+    log at WARNING per attempt so a degrading link is visible before it fails outright.
+
+    Returns True on success. Never raises: the daemon stays up and a real ping outage is
+    surfaced by incident.io's own heartbeat-late alert, which is the right place for it."""
     masked = mask_token(config.INCIDENT_IO_HEARTBEAT_URL)
-    try:
-        response = session.get(config.INCIDENT_IO_HEARTBEAT_URL, timeout=HTTP_TIMEOUT)
-        response.raise_for_status()
-        logger.info(f"Heartbeat acknowledged (HTTP {response.status_code})")
-        return True
-    except requests.RequestException as e:
-        logger.error(f"Heartbeat ping failed — {type(e).__name__}: {e} (url: {masked})")
-        return False
+    started = time.monotonic()
+    deadline = started + budget
+    attempt = 0
+
+    while True:
+        attempt += 1
+        try:
+            response = session.get(config.INCIDENT_IO_HEARTBEAT_URL, timeout=HTTP_TIMEOUT)
+            response.raise_for_status()
+            logger.info(f"Heartbeat acknowledged (HTTP {response.status_code}, attempt {attempt})")
+            return True
+        except requests.HTTPError as e:
+            status = e.response.status_code if e.response is not None else None
+            # 408 (timeout) and 429 (rate limited) are worth another go; the rest of 4xx
+            # is a config problem that no amount of retrying will fix.
+            if status is not None and 400 <= status < 500 and status not in (408, 429):
+                logger.error(f"Heartbeat rejected (HTTP {status}) — not retrying (url: {masked})")
+                return False
+            failure = f"HTTP {status}"
+        except requests.RequestException as e:
+            # mask_token the exception text too — HTTPError and ConnectionError messages
+            # embed the full URL, query string and all.
+            failure = f"{type(e).__name__}: {mask_token(str(e))}"
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            elapsed = time.monotonic() - started
+            logger.error(
+                f"Heartbeat ping failed after {attempt} attempts / {elapsed:.0f}s — "
+                f"{failure} (url: {masked})"
+            )
+            return False
+
+        sleep_for = min(backoff, remaining)
+        logger.warning(
+            f"Heartbeat attempt {attempt} failed — {failure}; "
+            f"retrying in {sleep_for:.0f}s ({remaining:.0f}s budget left)"
+        )
+        time.sleep(sleep_for)
+        backoff = min(backoff * 2, 10)
 
 
 if __name__ == '__main__':
@@ -133,34 +177,40 @@ if __name__ == '__main__':
         logger.critical("INCIDENT_IO_PING_INTERVAL_MINUTES must be >= 1 — refusing to start.")
         raise SystemExit(1)
 
-    # The frequency is half the interval but not less than 1 minute.
+    # Every tick runs the checks and pings, so this — not the interval — is the ping
+    # cadence. The interval only scales it, and sets the back-off when unhealthy.
     frequency = max(interval_in_seconds / 2, 60)
+
+    # Keep a fully exhausted retry (budget + one final HTTP_TIMEOUT) inside one tick, so
+    # a failed ping can never push the next cycle late.
+    retry_budget = min(HEARTBEAT_RETRY_BUDGET_SECONDS, max(0, frequency - HTTP_TIMEOUT - 10))
 
     # Boot-time visibility — what we're configured with, who we're pinging.
     logger.info("Starting GlueOps cluster monitoring")
-    logger.info(f"Config: ping_interval={config.INCIDENT_IO_PING_INTERVAL_MINUTES} min, check_frequency={int(frequency)}s")
+    logger.info(
+        f"Config: ping_cadence={int(frequency)}s, heartbeat_retry_budget={int(retry_budget)}s, "
+        f"unhealthy_backoff={interval_in_seconds}s"
+    )
     logger.info(f"Heartbeat URL: {mask_token(config.INCIDENT_IO_HEARTBEAT_URL)}")
     logger.info(f"Prometheus:    {config.prometheus}")
     logger.info(f"Alertmanager:  {config.alertmanager}")
 
-    execution_count = 0
-
     while True:
-        if execution_count < 2:
-            logger.info("Running cluster health checks")
-            all_passed, failed_count, total_count = run_all_health_checks(config)
+        cycle_start = time.monotonic()
 
-            if all_passed:
-                logger.info(f"All {total_count} checks passed — pinging incident.io heartbeat")
-                send_incident_io_heartbeat(config)
-            else:
-                logger.error(f"{failed_count} of {total_count} checks failed — skipping heartbeat ping")
-                logger.info(f"Sleeping {interval_in_seconds}s before next attempt")
-                time.sleep(interval_in_seconds)
+        logger.info("Running cluster health checks")
+        all_passed, failed_count, total_count = run_all_health_checks(config)
 
-            execution_count += 1
+        if all_passed:
+            logger.info(f"All {total_count} checks passed — pinging incident.io heartbeat")
+            send_incident_io_heartbeat(config, retry_budget)
         else:
-            # Reset the count and sleep for the full interval before checking again.
-            execution_count = 0
+            logger.error(f"{failed_count} of {total_count} checks failed — skipping heartbeat ping")
+            logger.info(f"Sleeping {interval_in_seconds}s before next attempt")
+            time.sleep(interval_in_seconds)
 
-        time.sleep(frequency)
+        # Fixed-rate tick: retry time is absorbed by the interval rather than added to
+        # it, so an exhausted retry budget doesn't push the next ping late. Measured
+        # from cycle_start (not a fixed epoch) so an overrunning cycle slips the
+        # schedule instead of firing a catch-up burst.
+        time.sleep(max(0.0, frequency - (time.monotonic() - cycle_start)))
