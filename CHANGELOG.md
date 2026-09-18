@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.6.0](https://github.com/GlueOps/cluster-monitoring/compare/v4.5.0...v4.6.0) (2026-09-18)
+
+
+### Features
+
+* update docker/setup-buildx-action to v4.3.0 #minor ([#206](https://github.com/GlueOps/cluster-monitoring/issues/206)) ([3e48626](https://github.com/GlueOps/cluster-monitoring/commit/3e48626b755847818ca5a412934046c4bcba33d2))
+
 ## [4.5.0](https://github.com/GlueOps/cluster-monitoring/compare/v4.4.1...v4.5.0) (2026-08-29)
 
 
