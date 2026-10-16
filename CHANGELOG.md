@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.7.0](https://github.com/GlueOps/cluster-monitoring/compare/v4.6.0...v4.7.0) (2026-10-16)
+
+
+### Features
+
+* update docker/build-push-action to v7.4.0 #minor ([#208](https://github.com/GlueOps/cluster-monitoring/issues/208)) ([9b2c0cb](https://github.com/GlueOps/cluster-monitoring/commit/9b2c0cbdf206f17c7975ebd87dd7227f5b38d9db))
+* update docker/setup-buildx-action to v4.4.0 #minor ([#211](https://github.com/GlueOps/cluster-monitoring/issues/211)) ([162bd04](https://github.com/GlueOps/cluster-monitoring/commit/162bd04e24db5b23db63deda357d98b13d77f10d))
+
+
+### Miscellaneous Chores
+
+* **patch:** update docker/setup-buildx-action to v4.4.1 #patch ([#212](https://github.com/GlueOps/cluster-monitoring/issues/212)) ([b810974](https://github.com/GlueOps/cluster-monitoring/commit/b810974188cab95d635bde8b6cfbdda1f1524b59))
+
 ## [4.6.0](https://github.com/GlueOps/cluster-monitoring/compare/v4.5.0...v4.6.0) (2026-09-18)
 
 
