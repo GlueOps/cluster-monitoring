@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.8.0](https://github.com/GlueOps/cluster-monitoring/compare/v4.7.0...v4.8.0) (2026-10-22)
+
+
+### Features
+
+* update python to 3.15.1 #minor ([#215](https://github.com/GlueOps/cluster-monitoring/issues/215)) ([a1047f6](https://github.com/GlueOps/cluster-monitoring/commit/a1047f65ba2cd270391169bcdddafe43dc2cf0e9))
+
+
+### Miscellaneous Chores
+
+* **fallback:** update docker/setup-qemu-action ([#210](https://github.com/GlueOps/cluster-monitoring/issues/210)) ([5f0d418](https://github.com/GlueOps/cluster-monitoring/commit/5f0d418364cb5bbba6492200ab595dda321bcb08))
+* **fallback:** update python ([#217](https://github.com/GlueOps/cluster-monitoring/issues/217)) ([1f4f71c](https://github.com/GlueOps/cluster-monitoring/commit/1f4f71c16afa961e9cc56129f1b42190f6b30a2c))
+* **patch:** update python to 3.14.9 #patch ([#214](https://github.com/GlueOps/cluster-monitoring/issues/214)) ([3f5a75a](https://github.com/GlueOps/cluster-monitoring/commit/3f5a75a80c18e20d3493432126c6eaaf9fd9409a))
+
 ## [4.7.0](https://github.com/GlueOps/cluster-monitoring/compare/v4.6.0...v4.7.0) (2026-10-16)
 
 
